@@ -1,0 +1,140 @@
+/*
+ * browserUi.css — the find bar and the address bar.
+ *
+ * Same rules as overlay.css: every declaration is !important and every class
+ * is namespaced, because this lands on arbitrary third-party pages whose own
+ * CSS would otherwise win. The root never affects page layout.
+ *
+ * TWO THINGS HERE ARE LOAD-BEARING, NOT TASTE:
+ *
+ * 1. Every piece of text is CSS generated content — `content: attr(data-…)` —
+ *    or an input's `value`. Neither is a DOM text node, so window.find cannot
+ *    match the find bar's own counter and report the widget as a hit on the
+ *    page. Putting "1/73" in a real text node would make a search for "1"
+ *    count itself.
+ *
+ * 2. Plain, high contrast, big enough to read in a screenshot that has been
+ *    through a vision encoder. The model navigates these by LOOKING at them;
+ *    if the counter is not legible at screenshot resolution the widget has
+ *    failed at the only thing it is for.
+ *
+ * THE EXACT APPEARANCE IS A GUESS. We have not seen the harness's own widgets.
+ * This is deliberately close to Chrome's shapes and positions, which is the
+ * most likely thing they imitated — see README.md.
+ */
+
+#gui-agent-browser-ui-root {
+  position: fixed !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none !important;
+  /* One below the click overlay, so a click ring still draws on top. */
+  z-index: 2147483646 !important;
+  contain: layout style !important;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.gui-agent-bui {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border: 1px solid #c7c7cc !important;
+  border-top: 0 !important;
+  border-radius: 0 0 8px 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22) !important;
+  color: #1c1c1e !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  pointer-events: none !important;
+}
+
+/* The label that says WHICH bar this is, so a screenshot is unambiguous. */
+.gui-agent-bui::before {
+  content: attr(data-label) !important;
+  flex: 0 0 auto !important;
+  color: #6b6b70 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Top-right, under where Chrome's own find bar drops down. */
+.gui-agent-bui-find {
+  top: 0 !important;
+  right: 16px !important;
+  width: 420px !important;
+  max-width: 70vw !important;
+}
+
+/* The address bar spans the top, where an omnibox is. */
+.gui-agent-bui-address {
+  top: 0 !important;
+  left: 16px !important;
+  right: 16px !important;
+  max-width: calc(100vw - 32px) !important;
+}
+
+.gui-agent-bui-input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 4px 8px !important;
+  border: 1px solid #d0d0d5 !important;
+  border-radius: 5px !important;
+  background: #ffffff !important;
+  color: #1c1c1e !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  text-align: left !important;
+  pointer-events: none !important;
+  /* A readonly input is never focused by us, so Chrome draws no caret and no
+     focus ring. The border below supplies the "this is where typing goes" cue
+     that the model needs to read off the screenshot. */
+  outline: 2px solid #1a73e8 !important;
+  outline-offset: -1px !important;
+}
+
+.gui-agent-bui-url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+/* "Selected", the way Ctrl+L leaves the omnibox: the whole value highlighted,
+   so the next thing typed visibly replaces it rather than appending. */
+.gui-agent-bui-url.is-selected {
+  background: #1a73e8 !important;
+  color: #ffffff !important;
+}
+
+.gui-agent-bui-count {
+  flex: 0 0 auto !important;
+  min-width: 46px !important;
+  color: #3c3c43 !important;
+  font-variant-numeric: tabular-nums !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-align: right !important;
+}
+
+.gui-agent-bui-count::after {
+  content: attr(data-count) !important;
+}
+
+.gui-agent-bui-hint {
+  flex: 0 0 auto !important;
+  color: #8a8a8e !important;
+  font-size: 11px !important;
+  white-space: nowrap !important;
+}
+
+.gui-agent-bui-hint::after {
+  content: attr(data-hint) !important;
+}

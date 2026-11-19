@@ -1,0 +1,13 @@
+node_modules/
+__pycache__/
+.venv/
+.DS_Store
+*.pyc
+.ipynb_checkpoints/
+
+# Generated task reports contain screenshots and task contents
+save/*
+!save/.gitkeep
+
+# Bot token and channel ids. Local only, never committed.
+.discord.local.json

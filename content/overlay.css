@@ -1,0 +1,164 @@
+/*
+ * overlay.css — styles for the click-target debug overlay.
+ *
+ * Every declaration is !important and every class is namespaced, because this
+ * stylesheet lands on arbitrary third-party pages whose own CSS (resets,
+ * `* { animation: none }`, aggressive z-index stacks) would otherwise win.
+ * The overlay must never change page layout: the root is position:fixed,
+ * pointer-events:none, and contains no in-flow content.
+ */
+
+#gui-agent-overlay-root {
+  position: fixed !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none !important;
+  /* Max 32-bit signed int: sit above any page stacking context. */
+  z-index: 2147483647 !important;
+  contain: layout style !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+.gui-agent-ov-ring {
+  position: absolute !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  border-radius: 50% !important;
+  background: rgba(255, 45, 45, 0.9) !important;
+  box-shadow:
+    0 0 0 3px rgba(255, 45, 45, 0.95),
+    0 0 0 6px rgba(255, 45, 45, 0.25) !important;
+  /* The caller sets left/top to the exact CSS viewport pixel; this centers
+     the dot on it instead of putting its corner there. */
+  transform: translate(-50%, -50%) scale(1) !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  animation: gui-agent-ov-ping 600ms ease-out forwards !important;
+}
+
+.gui-agent-ov-crosshair {
+  position: absolute !important;
+  background: rgba(255, 45, 45, 0.55) !important;
+  pointer-events: none !important;
+  animation: gui-agent-ov-fade 600ms ease-out forwards !important;
+}
+
+.gui-agent-ov-crosshair--h {
+  left: 0 !important;
+  width: 100% !important;
+  height: 1px !important;
+  transform: translateY(-50%) !important;
+}
+
+.gui-agent-ov-crosshair--v {
+  top: 0 !important;
+  height: 100% !important;
+  width: 1px !important;
+  transform: translateX(-50%) !important;
+}
+
+.gui-agent-ov-label {
+  position: absolute !important;
+  transform: translate(10px, 10px) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  background: rgba(20, 20, 24, 0.88) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  animation: gui-agent-ov-fade 600ms ease-out forwards !important;
+}
+
+.gui-agent-ov-note {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  max-width: 46vw !important;
+  padding: 7px 11px !important;
+  border-radius: 6px !important;
+  background: rgba(20, 20, 24, 0.9) !important;
+  color: #f5f5f7 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  white-space: pre-wrap !important;
+  pointer-events: none !important;
+  animation: gui-agent-ov-note 1800ms ease-out forwards !important;
+}
+
+/* The file chooser the operating system never drew.
+   Top-centre rather than a corner: it stands for a modal window, and a
+   screenshot of a corner badge reads as site chrome. It does not animate
+   away — the chooser stays open until upload() fills it. */
+.gui-agent-ov-chooser {
+  position: absolute !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  max-width: min(560px, 86vw) !important;
+  padding: 12px 16px !important;
+  border: 2px solid #ffb02e !important;
+  border-radius: 10px !important;
+  background: rgba(18, 18, 22, 0.96) !important;
+  color: #f5f5f7 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
+  pointer-events: none !important;
+}
+
+.gui-agent-ov-chooser__head {
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #ffb02e !important;
+}
+
+.gui-agent-ov-chooser__list {
+  margin: 0 0 8px !important;
+  padding: 0 0 0 18px !important;
+  list-style: disc !important;
+}
+
+.gui-agent-ov-chooser__list li {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #f5f5f7 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  list-style: disc !important;
+}
+
+.gui-agent-ov-chooser__hint {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #cfd2da !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+@keyframes gui-agent-ov-ping {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.45); }
+  45%  { opacity: 1; transform: translate(-50%, -50%) scale(1.35); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.1); }
+}
+
+@keyframes gui-agent-ov-fade {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes gui-agent-ov-note {
+  0%   { opacity: 0; transform: translateY(-6px); }
+  8%   { opacity: 1; transform: translateY(0); }
+  80%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-6px); }
+}

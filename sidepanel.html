@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GUI 에이전트</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="bar">
+    <h1>GUI 에이전트</h1>
+    <span id="status" class="pill pill--idle">대기 중</span>
+  </header>
+
+  <main>
+    <!-- Hidden until the page asks something. It sits ABOVE the task box
+         because a javascript dialog freezes the page it belongs to: until it
+         is answered no screenshot can be taken and the run is standing
+         still, so this is the only thing on the panel worth looking at. -->
+    <section class="card card--ask" id="dialogAsk" hidden>
+      <p class="ask__title">페이지가 물었습니다</p>
+      <p class="ask__text" id="dialogAskText"></p>
+      <div class="row">
+        <button id="dialogAccept" class="btn btn--primary">확인</button>
+        <button id="dialogDismiss" class="btn btn--danger">취소</button>
+      </div>
+      <p class="hint" id="dialogAskHint"></p>
+    </section>
+
+    <section class="card">
+      <label class="field">
+        <span class="field__label">작업</span>
+        <textarea id="task" rows="2" placeholder="예: 요금 페이지를 찾아 가장 저렴한 요금제를 알려줘"></textarea>
+      </label>
+      <label class="field">
+        <span class="field__label">시작 URL <span class="tag">선택</span></span>
+        <input type="url" id="startUrl" placeholder="https://example.com" spellcheck="false" autocomplete="url" />
+      </label>
+      <p class="hint">입력하면 첫 단계 전에 이 주소를 엽니다. 비워 두면 작업 문장에 적힌 마지막 URL을 사용합니다.</p>
+      <!-- Two rows of two, not three and an orphan. A .btn is flex: 1, which
+           means nothing outside a .row, so the folder button sat under the
+           row at its own width with no gap above it. The pair that starts and
+           stops a run reads first; the two that deal with the saved report
+           belong together on the line below. -->
+      <div class="row">
+        <button id="run" class="btn btn--primary">실행</button>
+        <button id="stop" class="btn btn--danger" disabled>중지</button>
+      </div>
+      <div class="row">
+        <button id="saveTrajectory" class="btn" disabled>기록 HTML 저장</button>
+        <button id="chooseTrajectoryFolder" class="btn">프로젝트 폴더 선택</button>
+      </div>
+      <!-- OFF by default. Every run used to write a report, and with no folder
+           chosen that is a browser download per run — a downloads list full of
+           files nobody asked for. The button beside it still saves on demand,
+           which is what most runs want. -->
+      <label class="check">
+        <input type="checkbox" id="autoSaveTrajectory" />
+        <span>실행이 끝나면 기록 HTML 자동 저장. 꺼두면 위의 <strong>기록 HTML 저장</strong>
+          버튼을 누를 때만 저장합니다. 기본값은 꺼짐입니다.</span>
+      </label>
+      <p id="trajectoryFolder" class="hint">클론한 KORMo-Web-Extension 폴더를 선택하면 그 안의 save/에 자동 저장됩니다. 패널을 다시 열면 재선택하세요.</p>
+      <p id="target" class="hint">대상 탭: 실행 버튼을 누르면 선택됩니다</p>
+      <p id="captureInfo" class="hint">캡처 0장 · 모델 입력 이미지 0장</p>
+    </section>
+
+    <!-- Closed by default: a demo needs the task box, 실행/중지 and the log.
+         Everything below is set up once or used while developing, so it is kept
+         in the DOM (every id still resolves, every setting still persists) and
+         only moved out of sight. -->
+    <details class="dev" id="devSettings">
+      <summary>개발자 설정</summary>
+      <div class="dev__body">
+
+<section class="card">
+          <h2>모델</h2>
+          <label class="check">
+            <input type="checkbox" id="useMock" />
+            <span>테스트 모델 사용(미리 정해진 동작 실행, 서버 불필요)</span>
+          </label>
+          <label class="field">
+            <span class="field__label">시나리오 <span class="tag">테스트 모델 전용</span></span>
+            <textarea id="scenario" rows="6" spellcheck="false"
+              placeholder='비워 두면 기본 좌표 테스트를 실행합니다.&#10;[{"action":"click","x":400,"y":115},&#10; {"action":"type","text":"인공지능"},&#10; {"action":"key","key":"Enter"}]'></textarea>
+          </label>
+          <p class="hint">
+            모델 없이 순서대로 실행할 JSON 배열입니다. <code>x</code>/<code>y</code>는 CSS 픽셀,
+            <code>fx</code>/<code>fy</code>(0~1)는 창 크기가 바뀌어도 같은 곳을 가리킵니다.
+            <br>click · double_click · right_click · hover · focus · clear · drag ·
+            type · key · hotkey · scroll · wait · goto · go_back · go_forward ·
+            new_tab · switch_tab · close_tab · done
+          </p>
+          <label class="field">
+            <span class="field__label">서버 기본 URL <span class="tag">OpenAI&nbsp;/v1</span></span>
+            <!-- A model server on this machine. Point it anywhere that speaks the
+                 OpenAI /v1 API; the host must also be in manifest.json. -->
+            <input type="url" id="baseUrl" value="http://localhost:8010/v1" spellcheck="false" />
+          </label>
+          <div class="grid2">
+            <label class="field">
+              <span class="field__label">API 키</span>
+              <input type="text" id="apiKey" value="EMPTY" spellcheck="false" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span class="field__label">모델 이름</span>
+              <input type="text" id="modelName" value="KORMo-VL/KORMo-Web-4B-mlx-4bit" spellcheck="false" />
+            </label>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="sendTools" checked />
+            <span>도구 스키마 전송(<code>tools</code> 배열 사용).
+              서버가 <code>tools</code> 항목을 거부하는지 확인할 때만 체크를 해제하세요.
+              모델이 올바른 형식으로 응답하려면 스키마가 필요합니다.</span>
+          </label>
+          <label class="field">
+            <span class="field__label">tool_choice</span>
+            <select id="toolChoice">
+              <option value="none">none — vLLM</option>
+              <option value="auto" selected>auto — vllm-mlx (Apple Silicon)</option>
+            </select>
+          </label>
+          <!-- The same value behaves the opposite way on each server. vLLM
+               started without --enable-auto-tool-choice rejects "auto" with
+               HTTP 400 and still puts the schema in the prompt on "none";
+               vllm-mlx drops the schema silently on "none". The same request
+               carrying two tools measured 9 tokens on "none" and 243 on
+               "auto", and 9 tokens is what sending no tools at all costs. -->
+          <p class="hint">
+            vllm-mlx는 <code>auto</code>, vLLM은 <code>none</code>을 씁니다.
+            값을 잘못 고르면 모델이 도구를 받지 못합니다.
+          </p>
+          <p class="hint">
+            요청 형식은 하나입니다. 학습 때 쓴 <strong>도구 22개</strong>와 시스템 프롬프트를
+            대화 기록에 실어 보내고, 응답은 <code>&lt;function=…&gt;&lt;parameter=…&gt;</code> XML로 읽습니다.
+          </p>
+          <!-- Off by default: `think`와 `tool_call`은 이 원문에서 뽑아낸 것이라
+               기본 화면에서는 같은 내용이 두 번 찍힌다. 파싱이 실패했을 때 켜는
+               스위치이므로 지우지 않고 여기에 둔다. -->
+          <!-- The request, not the reply. What the model team asks for when a
+               format changes, and the one thing DevTools shows badly: the
+               base64 screenshot is hundreds of thousands of characters. -->
+          <!-- ON by default, and it decides before the switch below. The model
+               is trained on the recording executor's own result lines —
+               `Succeed: `click` on <input> type=text unchecked at (470, 251)
+               executed. Note: no visible navigation or new tab detected.` —
+               the feedback strings in HARNESS.md. With this on,
+               the model reads exactly that shape, failures included (the data
+               writes a failed step as the short `Succeed: `{tool}` executed.`).
+               Off, the switch below decides, as before. -->
+          <label class="check">
+            <input type="checkbox" id="trainingResults" checked />
+            <span>결과 문장을 학습 데이터 형식으로 보내기(<code>Succeed: `click` on &lt;요소&gt; at (x, y) executed. Note: …</code>,
+              <code>`type` typed "…"</code>, <code>`scroll` by (dx=…, dy=…)</code> 등 학습 때 본 문장 그대로).
+              학습 데이터에는 <code>Failed:</code> 줄이 없으므로 실패한 단계도 <code>Succeed: `{도구}` executed.</code>로 보냅니다.
+              끄면 아래 설정을 따릅니다. 기본값은 켜짐입니다.</span>
+          </label>
+          <!-- ON by default. The two documents we were given disagree: the
+               training records answer every step with the fixed sentence,
+               while the paper's A.2 describes an environment that compares
+               the browser state before and after each call and says what
+               changed. ON is the paper's reading, and it is the one that
+               measurably saved steps — a scroll that reports it is already at
+               the bottom, a clear that did not clear, a dropdown's options.
+               Turn it OFF to send exactly what the training data sent. -->
+          <label class="check">
+            <input type="checkbox" id="richResults" checked />
+            <span>결과 문장에 실제 결과 쓰기(모델이 읽는 <code>Succeed: …</code> 줄에
+              무엇이 일어났는지 적습니다 — 입력란의 실제 값, 스크롤이 움직인 양, 드롭다운 선택지).
+              끄면 학습 데이터와 같은 고정 문구 <code>Succeed: `{도구}` executed.</code>만 보냅니다.
+              <strong>실행 로그는 어느 쪽이든 그대로</strong>이고, 바뀌는 것은 모델이 받는 문장뿐입니다.
+              기본값은 켜짐입니다.</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="showRawRequest" />
+            <span>요청 원문 표시(<code>요청:</code> 줄에 서버로 보낸 JSON을 남깁니다).
+              스크린샷은 <code>[이미지 N KB]</code>로 줄여서 그대로 복사할 수 있습니다.
+              기본값은 꺼짐입니다.</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="showRawReply" />
+            <span>모델 응답 원문 표시(<code>응답:</code> 줄에 모델이 보낸 문자열을 그대로 남깁니다).
+              기본값은 꺼짐입니다. 평소에는 <code>think</code>와 <code>tool_call</code> 줄과 내용이 겹치므로,
+              응답을 읽지 못할 때만 켜세요.</span>
+          </label>
+          <!-- Where `upload(path)` finds the file the model names. -->
+          <label class="field">
+            <span class="field__label">업로드할 파일 <span class="tag">선택 · 절대경로</span></span>
+            <textarea id="uploadFiles" rows="2" spellcheck="false"
+              placeholder="/Users/me/Pictures/puppy.jpg"></textarea>
+          </label>
+          <!-- The chooser is not filled the moment it opens: the model is
+               told `A file chooser opened.` and answers with upload(path). -->
+          <p class="hint">
+            한 줄에 하나씩, <strong>절대경로</strong>로 적습니다.
+            모델이 <code>upload(puppy.jpg)</code>처럼 파일 이름을 주면 여기서 같은 이름을 찾고,
+            없으면 이번 실행에서 내려받은 파일 중에서 찾으며, <code>Downloads</code>를 주면
+            이번 실행에서 가장 최근에 내려받은 파일을 넣습니다.
+          </p>
+          <div class="grid3">
+            <label class="field">
+              <span class="field__label">temperature</span>
+              <input type="number" id="temperature" min="0" max="2" step="0.05" placeholder="0.6" />
+            </label>
+            <label class="field">
+              <span class="field__label">top_p</span>
+              <input type="number" id="topP" min="0" max="1" step="0.01" placeholder="0.95" />
+            </label>
+            <label class="field">
+              <span class="field__label">top_k</span>
+              <input type="number" id="topK" min="0" max="200" step="1" placeholder="20" />
+            </label>
+          </div>
+          <!-- 0.6 / 0.95 / 20 is the eval configuration's own sampling. -->
+          <p class="hint">
+            비워 두면 0.6 / 0.95 / 20을 씁니다. 재현이 필요하면 temperature를 0으로 두세요.
+          </p>
+          <div class="grid2">
+            <label class="field">
+              <span class="field__label">최대 응답 토큰 수 <span class="tag">최소 8192</span></span>
+              <input type="number" id="maxTokens" min="1" max="16384" value="16384" />
+            </label>
+            <label class="field">
+              <span class="field__label">최대 실행 단계</span>
+              <!-- A list, not a number box. The free-text field accepted 1, 7 and
+                   143, and every one of those was a typo waiting to end a demo
+                   mid-task or spend an afternoon of GPU time. The range is what
+                   the benchmark tasks actually need: the shopping tasks finish in
+                   20-40 steps when they finish at all, and 100 is the ceiling
+                   beyond which a run is not stuck, it is lost. -->
+              <select id="maxSteps">
+                <option value="20">20단계</option>
+                <option value="30">30단계</option>
+                <option value="40">40단계</option>
+                <option value="50" selected>50단계</option>
+                <option value="60">60단계</option>
+                <option value="70">70단계</option>
+                <option value="80">80단계</option>
+                <option value="90">90단계</option>
+                <option value="100">100단계</option>
+              </select>
+            </label>
+          </div>
+          <div class="grid2">
+            <label class="field">
+              <span class="field__label">단계 간 대기 시간(ms)</span>
+              <input type="number" id="stepDelay" min="0" max="10000" step="50" value="500" />
+            </label>
+            <label class="field">
+              <span class="field__label">최대 로딩 대기 시간(초)</span>
+              <input type="number" id="loadWaitSeconds" min="0" max="60" step="0.1" value="0" />
+            </label>
+            <p class="hint">0~60초로 설정할 수 있고, 0초는 바로 캡처합니다. 제한 시간이 지나면 현재 화면으로 계속 실행하며, 변경 사항은 다음 캡처부터 적용됩니다.</p>
+          </div>
+          <div class="grid2">
+            <label class="field">
+              <span class="field__label">모델 응답 대기 시간(초)</span>
+              <input type="number" id="modelTimeoutSeconds" min="5" max="600" step="1" value="45" />
+            </label>
+            <label class="field">
+              <span class="field__label">확인 대화상자 처리</span>
+              <select id="dialogPolicy">
+                <option value="ask" selected>물어보기</option>
+                <option value="dismiss">항상 취소</option>
+                <option value="accept">항상 확인</option>
+              </select>
+            </label>
+          </div>
+          <p class="hint">
+            페이지가 <code>confirm</code>이나 <code>prompt</code>를 띄웠을 때의 처리 방식입니다.
+            <strong>물어보기</strong>는 패널 맨 위에 질문을 띄우고, 60초 안에 답하지 않으면 취소로 처리합니다.
+          </p>
+          <!-- Measured: a turn carrying a screenshot runs at about 5 tokens a
+               second, so 45 seconds is roughly 230 tokens. Past 50 seconds the
+               browser gives up on the connection first, and what the panel can
+               show then is a connection error, not a timeout notice. -->
+          <p class="hint">
+            한 번의 모델 응답을 기다리는 시간이고, 느린 로컬 모델에서는 늘려야 합니다.
+            <strong>50초를 넘기면</strong> 브라우저가 먼저 연결을 포기해 연결 오류가 표시될 수 있습니다.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>디스코드 원격 명령</h2>
+          <!-- OFF by default, and it has to stay that way. Turning this on
+               means a message in a chat channel can drive a browser that is
+               logged into the operator's own accounts — on a shopping site the
+               agent can reach 구매하기. A capability like that is one a person
+               switches on for a session, not one they inherit from a saved
+               panel without noticing. -->
+          <label class="check">
+            <input type="checkbox" id="discordEnabled" />
+            <span>원격 명령 받기(채널에서 <strong>봇을 멘션</strong>하면 그 문장을 작업으로 실행합니다).
+              켜져 있는 동안에만 받으며, 패널을 닫으면 멈춥니다. 기본값은 꺼짐이고,
+              <strong>한 번 켜 두면 다음에 열 때 자동으로 다시 연결합니다</strong> —
+              릴레이가 떠 있지 않으면 연결에 실패하고 체크가 꺼집니다.</span>
+          </label>
+          <!-- The token is NOT here, and that is the whole point. Discord's
+               edge answers a request carrying browser headers with
+               `403 internal network error` — a bot token in a web page is a
+               token anyone can take, so they refuse to let it happen. The
+               relay holds it; the panel holds a loopback address. -->
+          <label class="field">
+            <span class="field__label">릴레이 주소</span>
+            <input type="url" id="discordRelay" value="http://127.0.0.1:8765" spellcheck="false" />
+          </label>
+          <p id="discordStatus" class="hint">꺼져 있습니다.</p>
+          <!-- The relay prints the bot name and the channel as it starts,
+               which is how a wrong config shows itself. -->
+          <p class="hint">
+            먼저 터미널에서 <code>node relay/discord-relay.mjs</code>를 실행해 두세요.
+            봇 토큰과 채널, 허용 사용자는 <code>.discord.local.json</code>에 있고 릴레이만 읽습니다.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>좌표</h2>
+          <label class="field">
+            <span class="field__label">모델 좌표 방식</span>
+            <select id="coordMode"></select>
+          </label>
+          <p id="coordHelp" class="hint"></p>
+          <div class="grid2" id="pixelFields" hidden>
+            <label class="field">
+              <span class="field__label">모델 입력 이미지 너비(px)</span>
+              <input type="number" id="modelInputWidth" min="1" value="1000" />
+            </label>
+            <label class="field">
+              <span class="field__label">모델 입력 이미지 높이(px)</span>
+              <input type="number" id="modelInputHeight" min="1" value="1000" />
+            </label>
+          </div>
+          <p class="hint">
+            스크린샷은 CDP의 <code>clip&nbsp;scale:&nbsp;1</code>로 캡처하므로 스크린샷 1픽셀이 CSS 1픽셀과 같습니다.
+            Retina 화면에서도 devicePixelRatio 변환은 필요하지 않습니다.
+          </p>
+        </section>
+
+      </div>
+    </details>
+
+    <section class="card card--log">
+      <h2>실행 로그 <button id="clearLog" class="btn btn--ghost btn--xs">지우기</button></h2>
+      <div id="log" class="log" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <!-- type="module" because every src/*.js file is a real ES module and there
+       is no bundler in this project. Chrome loads them natively. -->
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>
